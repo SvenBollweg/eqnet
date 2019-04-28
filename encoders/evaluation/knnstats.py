@@ -71,6 +71,10 @@ class SemanticEquivalentDistanceEvaluation:
 
         return k_nns_semantic_eq / num_k_nns
 
+    #data_filename = allFilename
+    #test_filename = evaluationFilename
+    #numnn = number of nearest neighbors?
+    #self.__encoder = AbstractEncoder.load(encoder_filename) = pkl-file
     def evaluate_with_test(self, data_filename: str, test_filename: str, consider_only_first_n_components: int = None,
                            num_nns: int = 15) -> np.array:
         test_data = import_data(test_filename)
@@ -82,9 +86,12 @@ class SemanticEquivalentDistanceEvaluation:
 
         data = import_data(data_filename)
         encodings = []
+        #Menge von Indizes
         equivalence_classes = defaultdict(set)  # eq_class->set(ids)
+        #Mapping von Index auf Äquivalenzklasse
         test_samples_idx_map = OrderedDict()  # id-> eq_class
         for eq_class, code in data.items():
+            #encoding = 64-Stellen np-array = Repräsentation des berechneten SemVecs?
             encoding = self.__encoder.get_encoding(code['original'])
             assert not np.isnan(np.sum(encoding))
             encodings.append(encoding)
@@ -125,9 +132,14 @@ class SemanticEquivalentDistanceEvaluation:
                 continue
             for j in range(num_nns):
                 num_k_nns[j] += 1
+                #Formel (4) von Seite 6 in Paper
+                #"proportion of k nearest neighbors of each expression (using cosine similarity)
+                # that belong to the same equivalence class"
                 k_nns_semantic_eq[j] += float(len(semantically_eq_nns & set(nearest_neighbors[i, :j + 1]))) / \
                                         min(len(semantically_eq_nns), j + 1)
 
+        #Avg Semantically Equivalent NNs
+        #durchschnittlich sematnisch äquivlanete nearest neighbors?
         return k_nns_semantic_eq / num_k_nns
 
 
@@ -138,9 +150,12 @@ if __name__ == "__main__":
         print("Usage <encoderPkl> <evaluationFilename> <allFilename> [considerOnlyFirstKcomponents]")
         sys.exit(-1)
 
+    #sys.argv[1] = pkl-file (trained network)
     evaluator = SemanticEquivalentDistanceEvaluation(sys.argv[1])
     if len(sys.argv) == 5:
         n_components = int(sys.argv[4])
+        #sys.argv[3] = allFilename
+        #sys.argv[2] = evaluationFilename
         nn_stats = evaluator.evaluate_with_test(sys.argv[3], sys.argv[2], consider_only_first_n_components=n_components)
     else:
         nn_stats = evaluator.evaluate_with_test(sys.argv[3], sys.argv[2])
