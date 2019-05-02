@@ -65,6 +65,40 @@ def take_all_expressions(data_filename):
     return expressions
 
 
+def take_expressions_eq_classes(data_filename):
+    """
+    Extracts all expressions sorted by equivalence classes and the equivalence classes from a data file.
+    
+    data_file -- the path to the file with the data
+    
+    return -- a tupel of two lists, the first one contains the eqiuvalence classes, the second one contains for each equivalence class a list with the expressions
+    """
+    
+    data = import_data(data_filename)
+    # a list for the equivalence classes
+    eq_classes = []
+    # a list of lists for the expressions
+    expressionss = []
+    
+    # iterate over the equivalence classes in the file
+    for eq_class, code in data.items():
+        eq_classes.append(eq_class)
+        
+        # a list for the expressions
+        expressions = []
+        # add the original expression
+        expressions.append(code['original'])
+        
+        # add also the noise expressions
+        for noise_expression in code['noise']:
+            expressions.append(noise_expression)
+        
+        # add the list of expressions to the list of lists
+        expressionss.append(expressions)
+    
+    return eq_classes, expressionss
+
+
 def load_encoder(encoder_filename):
     """
     Loads the encoder from file
