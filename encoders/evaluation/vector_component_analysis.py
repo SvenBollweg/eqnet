@@ -1,6 +1,7 @@
 import numpy as np
 from data.dataimport import import_data
 import matplotlib.pyplot as plt
+import os
 
 from encoders.baseencoder import AbstractEncoder
 
@@ -111,7 +112,6 @@ def load_encoder(encoder_filename):
     return AbstractEncoder.load(encoder_filename)
 
 
-
 def plot_mean_stdev(mean, stdev, output_filename):
     """
     Plots the mean and the standard deviation for all components of several SemVecs
@@ -125,22 +125,76 @@ def plot_mean_stdev(mean, stdev, output_filename):
     x = np.arange(len(mean))
     
     # make a plot with the mean values as y-values and the stdev as errorbar
+    plt.clf()
     plt.errorbar(x, mean, yerr = stdev, linestyle = '', marker = 'o')
     plt.xlabel('component')
     plt.ylabel('value')
     plt.savefig(output_filename)
 
 
+def plot_for_all_eqClasses_average(encoder, data_filename, dataset, path_to_output_file):
+    """
+    Save a plot for all equivalence classes for given dataset (average)
+    Name of file: dataset-test_all.svg
 
-# vorläufige main-funktion
-if __name__ == "__main__":
-    
-    encoder_filename = 'rnnsupervisedencoder-boolean5.pkl'
-    data_filename = 'expressions-synthetic/split/boolean5-testset.json.gz'
-    output_filename = 'boolean5-test_all.svg'
-    
-    encoder = load_encoder(encoder_filename)
+    encoder -- the encoder object for encoding
+    data_filename -- the path to the file with the data
+    dataset --  name of the used dataser
+    path_to_output_file -- path for the output file
+    """
+    output_filename = path_to_output_file +  dataset + '-test_all.svg'
     expressions = take_all_expressions(data_filename)
     encodings = get_encodings(encoder, expressions)
     mean, stdev = calc_mean_stdev(encodings)
     plot_mean_stdev(mean, stdev, output_filename)
+
+
+def plot_for_every_eqClass(encoder,  data_filename, dataset, path_to_output_file):
+    """
+    Save a plot for every equivalence class for given dataset
+    Name of files: dataset-<nof expressions in equivalence class>-<name of equivalence class>.svg
+
+    encoder -- the encoder object for encoding
+    data_filename -- the path to the file with the data
+    dataset --  name of the used dataser
+    path_to_output_file -- path for the output file
+    """
+    eqClasses, expressionsByEqClass = take_expressions_eq_classes(data_filename)
+    for i in range(len(eqClasses)):
+        print("generating plot for:", eqClasses[i])
+        output_filename = path_to_output_file +  dataset + '-' + str(len(expressionsByEqClass[i])) + '-' + eqClasses[i] + '.svg'
+        encodings = get_encodings(encoder, expressionsByEqClass[i])
+        mean, stdev = calc_mean_stdev(encodings)
+        plot_mean_stdev(mean, stdev, output_filename)
+
+
+# vorläufige main-funktion
+if __name__ == "__main__":
+
+    dataset = 'simplepoly5'
+    path_to_trained_set = 'results/'
+    path_to_data_file = 'semvec-data/expressions-synthetic/split/'
+    path_to_output_file = 'results/' + dataset
+
+    encoder_filename = path_to_trained_set + 'rnnsupervisedencoder-' + dataset + '.pkl'
+    data_filename = path_to_data_file + dataset + '-testset.json.gz'
+
+    #make a new directory in results for the outputfiles
+    try:
+        os.mkdir(path_to_output_file)
+    except OSError:
+        print("Creation of the directory %s failed" % path_to_output_file)
+    else:
+        print("Successfully created the directory %s " % path_to_output_file)
+
+    path_to_output_file = path_to_output_file + '/'
+
+    
+    encoder = load_encoder(encoder_filename)
+
+    plot_for_all_eqClasses_average(encoder, data_filename, dataset, path_to_output_file)
+    plot_for_every_eqClass(encoder, data_filename, dataset, path_to_output_file)
+
+
+
+
