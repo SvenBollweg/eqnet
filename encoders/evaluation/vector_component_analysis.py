@@ -121,6 +121,9 @@ def plot_mean_stdev(mean, stdev, output_filename):
     output_filename -- the path for the plot
     """
     
+    # create a new figure for this plot
+    plt.figure('new_figure')
+    
     # an array with the numbers of the components as x-values
     x = np.arange(len(mean))
     
@@ -130,6 +133,46 @@ def plot_mean_stdev(mean, stdev, output_filename):
     plt.xlabel('component')
     plt.ylabel('value')
     plt.savefig(output_filename)
+    
+    # close the figure
+    plt.close('new_figure')
+
+
+def plot_mean_all_in_one(mean, figure_name):
+    """
+    Plots the mean for all components of several SemVecs, every call of this method plots one line in the given figure
+    
+    mean -- an array of the mean values for all the components
+    figure_name -- the name of the figure where you want to have a plot of the given means
+    """
+    
+    # switch to the given figure
+    plt.figure(figure_name)
+    
+    # an array with the numbers of the components as x-values
+    x = np.arange(len(mean))
+    
+    plt.plot(x, mean, linestyle = '-', linewidth = 0.1, marker = '')
+
+
+def save_plot_all_in_one(figure_name, output_filename):
+    """
+    Saves the all in one figure.
+    
+    figure_name -- the name of the figure you want to save
+    output_filename -- the path for the plot
+    """
+    
+    # switch to the given figure
+    plt.figure(figure_name)
+    
+    # set labels and save the figure
+    plt.xlabel('component')
+    plt.ylabel('value')
+    plt.savefig(output_filename)
+    
+    # close the figure
+    plt.close(figure_name)
 
 
 def plot_for_all_eqClasses_average(encoder, data_filename, dataset, path_to_output_file):
@@ -153,19 +196,31 @@ def plot_for_every_eqClass(encoder,  data_filename, dataset, path_to_output_file
     """
     Save a plot for every equivalence class for given dataset
     Name of files: dataset-<nof expressions in equivalence class>-<name of equivalence class>.svg
+    It also creates an 'all in one' plot, whre a line for every equivalence class is plottet to one figure
+    Name of file: dataset-all_in_one.svg
 
     encoder -- the encoder object for encoding
     data_filename -- the path to the file with the data
     dataset --  name of the used dataser
     path_to_output_file -- path for the output file
     """
+    # set a name for the figure of the all in one plot
+    all_in_one_name = 'all_in_one'
+    
     eqClasses, expressionsByEqClass = take_expressions_eq_classes(data_filename)
     for i in range(len(eqClasses)):
         print("generating plot for:", eqClasses[i])
         output_filename = path_to_output_file +  dataset + '-' + str(len(expressionsByEqClass[i])) + '-' + eqClasses[i] + '.svg'
         encodings = get_encodings(encoder, expressionsByEqClass[i])
         mean, stdev = calc_mean_stdev(encodings)
+        # make the normal plot
         plot_mean_stdev(mean, stdev, output_filename)
+        # plot the data of this iteration to the all in one plot
+        plot_mean_all_in_one(mean, all_in_one_name)
+    
+    # create a name for the all in one plot and save it
+    all_in_one_filename = path_to_output_file + dataset + '-all_in_one.svg'
+    save_plot_all_in_one(all_in_one_name, all_in_one_filename)
 
 
 # vorläufige main-funktion
