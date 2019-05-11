@@ -2,6 +2,7 @@ import numpy as np
 from data.dataimport import import_data
 import matplotlib.pyplot as plt
 import os
+import re
 
 from encoders.baseencoder import AbstractEncoder
 
@@ -98,6 +99,62 @@ def take_expressions_eq_classes(data_filename):
         expressionss.append(expressions)
     
     return eq_classes, expressionss
+
+
+def symbol_is_in_expression(expression, symbol):
+    """
+    return if given symbol is present in expression
+    """
+    return not (re.search(symbol, expression) == None)
+
+
+def symbol_is_only_symbol(expression, symbol, all_symbols):
+    """
+    return if given symbol is exclusive in expression
+    """
+    if(symbol_is_in_expression(expression, symbol)):
+        for i in range(len(all_symbols)):
+            if (symbol != all_symbols[i] and symbol_is_in_expression(expression, all_symbols[i])):
+                #other symbol in expression
+                return False
+        #symbol is only symbol in expression
+        return True
+    else:
+        #symbol is not in expression
+        return False
+
+
+def take_expressions_symbol(data_filename, symbol, all_symbols, exclusive = True):
+    """
+    Extracts all expressions for a given symbol from a data file
+    (all equivalence classes, the original as well as the noise)
+
+    data_file -- the path to the file with the data
+    symbol -- symbol in expression
+    all_symbols -- all possible symbols for file
+    exclusive -- if True: the symbol has to be exclusive to the expression
+
+    return a list with the expressions
+    """
+
+    data = import_data(data_filename)
+    expressions = []
+
+    # iterate over the equivalence classes in the file
+    for eq_class, code in data.items():
+        if(exclusive):
+            inExpression = symbol_is_only_symbol(eq_class, symbol, all_symbols)
+        else:
+            inExpression = symbol_is_in_expression(eq_class, symbol)
+        if(inExpression):
+            # add the original expression
+            expressions.append(code['original'])
+
+            # add also the noise expressions
+            for noise_expression in code['noise']:
+                expressions.append(noise_expression)
+
+    return expressions
 
 
 def load_encoder(encoder_filename):
@@ -223,13 +280,65 @@ def plot_for_every_eqClass(encoder,  data_filename, dataset, path_to_output_file
     save_plot_all_in_one(all_in_one_name, all_in_one_filename)
 
 
+def determine_regex(expression):
+    """
+    calculates the regular expression for given symbol
+    """
+    if(expression == "And"):
+        return "And"
+    elif(expression == "Or"):
+        return "Or"
+    elif(expression == "Not"):
+        return "Not"
+    elif(expression == "*"):
+        return "[a-z0-9][*][a-z0-9]"
+    elif(expression == "-"):
+        return "[a-z0-9] [-] [a-z0-9]"
+    elif(expression == "+"):
+        return "[a-z0-9] [+] [a-z0-9]"
+    elif(expression == "**"):
+        return "[a-z][*][*][0-9]"
+
+
+def plot_by_symbol(encoder, data_filename, dataset, path_to_output_file, all_symbols, exclusive = True):
+    """
+    Save a plot for every symbol in given dataset
+    Name of files: dataset-<nof expressions used>-<name of symbol>.svg
+
+    encoder -- the encoder object for encoding
+    data_filename -- the path to the file with the data
+    dataset --  name of the used dataser
+    path_to_output_file -- path for the output file
+    all_symbols -- all used symbols in the file
+    exclusive -- bool if symbol has to be exclusive in expression
+    """
+
+    #calculate regex for every symbol
+    all_symbols_regex = []
+    for i in range(len(all_symbols)):
+        all_symbols_regex.append(determine_regex(all_symbols[i]))
+
+    for i in range(len(all_symbols)):
+        expressions = take_expressions_symbol(data_filename, all_symbols_regex[i], all_symbols_regex, exclusive)
+        if(len(expressions) > 0):
+            print("generating plot for:", all_symbols[i])
+            output_filename = path_to_output_file + dataset + '-' + str(len(expressions)) + '-' + all_symbols[
+                i] + '.svg'
+            encodings = get_encodings(encoder, expressions)
+            mean, stdev = calc_mean_stdev(encodings)
+            plot_mean_stdev(mean, stdev, output_filename)
+
+
+
+
 # vorläufige main-funktion
 if __name__ == "__main__":
 
-    dataset = 'simplepoly5'
+    dataset = 'boolean5'
     path_to_trained_set = 'results/'
     path_to_data_file = 'semvec-data/expressions-synthetic/split/'
     path_to_output_file = 'results/' + dataset
+    path_to_output_file_symbols = 'results/' + dataset + '/per_symbol'
 
     encoder_filename = path_to_trained_set + 'rnnsupervisedencoder-' + dataset + '.pkl'
     data_filename = path_to_data_file + dataset + '-testset.json.gz'
@@ -242,14 +351,24 @@ if __name__ == "__main__":
     else:
         print("Successfully created the directory %s " % path_to_output_file)
 
-    path_to_output_file = path_to_output_file + '/'
+    # make a new directory in results for the outputfiles
+    try:
+        os.mkdir(path_to_output_file_symbols)
+    except OSError:
+        print("Creation of the directory %s failed" % path_to_output_file_symbols)
+    else:
+        print("Successfully created the directory %s " % path_to_output_file_symbols)
 
+    path_to_output_file = path_to_output_file + '/'
+    path_to_output_file_symbols = path_to_output_file_symbols + '/'
     
     encoder = load_encoder(encoder_filename)
 
     plot_for_all_eqClasses_average(encoder, data_filename, dataset, path_to_output_file)
     plot_for_every_eqClass(encoder, data_filename, dataset, path_to_output_file)
 
-
+    symbol_exclusively = False
+    all_symbols = ["And", "Or", "Not", "*", "-", "+", "**"]
+    plot_by_symbol(encoder, data_filename, dataset, path_to_output_file_symbols, all_symbols, symbol_exclusively)
 
 
