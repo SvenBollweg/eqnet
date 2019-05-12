@@ -60,8 +60,10 @@ if __name__ == '__main__':
 
     with ExperimentLogger(name="TreeRnnSupervisedEncoder", parameters=all_params,
                           directory=os.path.dirname(__file__)) as experiment_logger:
+        best_pickled_filename = 'rnnsupervisedencoder-best-' + trained_file[:-len('-trainset.json.gz')] + '.pkl'
         validation_score, historic_data = encoder.train(training_set, validation_set,
-                                                        additional_code_to_run=store_knn_score)
+                                                        additional_code_to_run=None, best_pickled_filename=best_pickled_filename)
+        print('The performance improved in the iterations: ' + str(historic_data['improved_at']))
         pickled_filename = 'rnnsupervisedencoder-' + trained_file[:-len('-trainset.json.gz')] + '.pkl'
         encoder.save(pickled_filename)
         with open('historic-data' + pickled_filename, 'wb') as f:

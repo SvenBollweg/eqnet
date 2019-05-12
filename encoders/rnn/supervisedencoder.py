@@ -12,6 +12,7 @@ import theano.tensor as T
 import time
 from theano.tensor.shared_randomstreams import RandomStreams
 from tqdm import trange
+import gc
 
 from encoders.baseencoder import AbstractEncoder
 from encoders.rnn.treedata import TreeDatasetExtractor
@@ -24,6 +25,8 @@ class RecursiveNNSupervisedEncoder(AbstractEncoder):
         self.__hyperparameters = hyperparameters
 
         self.__dataset_extractor = TreeDatasetExtractor(training_filename)
+        gc.collect()
+        
         self.__rng = RandomStreams()
 
         self.__rnn = RNN(self.__hyperparameters['memory_size'], self.__hyperparameters, self.__rng,
@@ -170,12 +173,11 @@ class RecursiveNNSupervisedEncoder(AbstractEncoder):
         return correct / len(dataset)
 
     def train(self, training_file, validation_file, max_iter=5000, patience=50, validation_check_limit=2,
-              additional_code_to_run=None) -> tuple:
+              additional_code_to_run=None, best_pickled_filename=None) -> tuple:
         self.__compile_if_needed()
 
         minibatch_size = self.__hyperparameters["minibatch_size"]
-        training_data = import_data(training_file)
-        training_set = list(self.__dataset_extractor.get_dataset_for_encoder(training_data, return_num_tokens=True))
+        training_set = list(self.__dataset_extractor.get_dataset_for_encoder(import_data(training_file), return_num_tokens=True))
         validation_set = list(self.__dataset_extractor.get_dataset_for_encoder(import_data(validation_file),
                                                                                return_num_tokens=True))
 
@@ -207,6 +209,8 @@ class RecursiveNNSupervisedEncoder(AbstractEncoder):
         else:
             best_score = compute_validation_score()
             print("Previous best validation score: %s" % best_score)
+        
+        gc.collect()
 
         try:
             print("[%s] Training Started..." % time.asctime())
@@ -251,6 +255,10 @@ class RecursiveNNSupervisedEncoder(AbstractEncoder):
                         self.__trained_parameters = [p.get_value() for p in self.__trainable_params]
                         print("At %s validation: current_score=%s [best so far]" % (i, current_score))
                         epochs_not_improved = 0
+                        # save the best network
+                        self.save(best_pickled_filename)
+                        # save the iteration numbers where the performance improved
+                        historic_data['improved_at'].append(i)
                     else:
                         print("At %s validation: current_score=%s" % (i, current_score))
                         epochs_not_improved += 1
@@ -264,6 +272,7 @@ class RecursiveNNSupervisedEncoder(AbstractEncoder):
                 if epochs_not_improved >= patience:
                     print("Not improved for %s epochs. Stopping..." % patience)
                     break
+                gc.collect()
             print("[%s] Training Finished..." % time.asctime())
         except (InterruptedError, KeyboardInterrupt):
             print("Interrupted. Exiting training gracefully...")
