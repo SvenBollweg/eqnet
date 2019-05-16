@@ -169,6 +169,25 @@ def load_encoder(encoder_filename):
     return AbstractEncoder.load(encoder_filename)
 
 
+def find_min_max(arr, minimum, num):
+    """
+    finds the smallest or largest values of an array
+    
+    arr - the array with the values
+    minimum - True, if you search for a minimum (False for maximum)
+    num - the number of values you are searching for
+    """
+    
+    # an array of the indices that sort the array in ascendin order
+    idx = np.argsort(arr)
+    
+    if minimum:
+        return idx[0:num]
+    else:
+        length = len(idx)
+        return idx[length - num: length]
+
+
 def plot_mean_stdev(mean, stdev, output_filename):
     """
     Plots the mean and the standard deviation for all components of several SemVecs
@@ -270,6 +289,10 @@ def plot_for_every_eqClass(encoder,  data_filename, dataset, path_to_output_file
         output_filename = path_to_output_file +  dataset + '-' + str(len(expressionsByEqClass[i])) + '-' + eqClasses[i] + '.svg'
         encodings = get_encodings(encoder, expressionsByEqClass[i])
         mean, stdev = calc_mean_stdev(encodings)
+        if len(expressionsByEqClass[i]) > 1:
+            print(str(find_min_max(stdev, False, 4)))
+        if len(expressionsByEqClass[i]) > 50:
+            print(str((stdev > 0.05).sum()))
         # make the normal plot
         plot_mean_stdev(mean, stdev, output_filename)
         # plot the data of this iteration to the all in one plot
@@ -326,6 +349,8 @@ def plot_by_symbol(encoder, data_filename, dataset, path_to_output_file, all_sym
                 i] + '.svg'
             encodings = get_encodings(encoder, expressions)
             mean, stdev = calc_mean_stdev(encodings)
+            print(str((stdev > 0.1).sum()))
+            print(str(find_min_max(stdev, False, 4)))
             plot_mean_stdev(mean, stdev, output_filename)
 
 
@@ -334,14 +359,14 @@ def plot_by_symbol(encoder, data_filename, dataset, path_to_output_file, all_sym
 # vorläufige main-funktion
 if __name__ == "__main__":
 
-    dataset = 'boolean5'
-    path_to_trained_set = 'results/'
-    path_to_data_file = 'semvec-data/expressions-synthetic/split/'
-    path_to_output_file = 'results/' + dataset
-    path_to_output_file_symbols = 'results/' + dataset + '/per_symbol'
+    dataset = 'oneVarPoly13'
+    path_to_trained_set = 'results_all/'
+    path_to_data_file = 'semvec-data/expressions-synthetic/'
+    path_to_output_file = 'results_all/' + dataset
+    path_to_output_file_symbols = 'results_all/' + dataset + '/per_symbol'
 
     encoder_filename = path_to_trained_set + 'rnnsupervisedencoder-' + dataset + '.pkl'
-    data_filename = path_to_data_file + dataset + '-testset.json.gz'
+    data_filename = path_to_data_file + dataset + '.json.gz'
 
     #make a new directory in results for the outputfiles
     try:
