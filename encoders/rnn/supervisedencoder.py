@@ -173,7 +173,7 @@ class RecursiveNNSupervisedEncoder(AbstractEncoder):
         return correct / len(dataset)
 
     def train(self, training_file, validation_file, max_iter=5000, patience=50, validation_check_limit=2,
-              additional_code_to_run=None, best_pickled_filename=None) -> tuple:
+              additional_code_to_run=None, best_pickled_filename=None, start_iter = 0) -> tuple:
         self.__compile_if_needed()
 
         minibatch_size = self.__hyperparameters["minibatch_size"]
@@ -221,7 +221,7 @@ class RecursiveNNSupervisedEncoder(AbstractEncoder):
             # cause instability.
             current_max_size = self.__hyperparameters['curriculum_initial_size']
             curriculum_step = self.__hyperparameters['curriculum_step']
-            for i in range(max_iter):
+            for i in range(start_iter, max_iter):
                 sample_ordering = []
                 for j, tree_data in enumerate(training_set):
                     if tree_data[1] <= current_max_size:

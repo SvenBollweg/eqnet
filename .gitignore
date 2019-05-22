@@ -84,3 +84,9 @@ ENV/
 # Spyder project settings
 .spyderproject
 
+# results
+results/
+results_all/
+
+.idea/
+
