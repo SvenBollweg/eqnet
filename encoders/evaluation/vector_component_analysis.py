@@ -266,6 +266,8 @@ def plot_per_symbol(output_filename, symbol, error):
     plt.xlabel('component')
     plt.ylabel('value')
 
+    #plt.ylim(ymax=0.04)
+
     x = np.arange(len(error))
 
     # plt.plot(x, all_error[i], linestyle='', linewidth=0.1, marker='o')
@@ -403,7 +405,7 @@ def calculate_center_for_every_eqClass(encoder, data_filename):
     return eqClass_mean
 
 
-def calculate_average_distance_to_center_for_eqClass(nameOfEqclass, average, encodedExpressions, all_symbols_regex, exclusive):
+def calculate_average_distance_to_center_for_eqClass_by_symbol(nameOfEqclass, average, encodedExpressions, all_symbols_regex, exclusive):
     """
     calculates the average distance to the mean representation of the eqClass
 
@@ -448,6 +450,24 @@ def calculate_average_distance_to_center_for_eqClass(nameOfEqclass, average, enc
     return error
 
 
+def calculate_average_distance_to_center_for_eqClass(average, encodedExpressions):
+    """
+    calculates the average distance to the mean representation of the eqClass
+
+    average -- mean representation of eqClass
+    encodedExpressions -- expressions of eqClass
+    """
+
+    error = np.zeros(encoder.get_representation_vector_size())
+
+    # iterate over all expressions in eqClass
+    for i in range(len(encodedExpressions)):
+        error += np.absolute(average - encodedExpressions[i])
+
+    error = error/len(encodedExpressions)
+
+    return error
+
 
 
 def plot_average_distance_per_symbol(encoder, data_filename, dataset, path_to_output_file, all_symbols, exclusive):
@@ -477,6 +497,7 @@ def plot_average_distance_per_symbol(encoder, data_filename, dataset, path_to_ou
 
     #number of equivilance classes that contain the symbol
     nofClasses = np.zeros(len(all_symbols))
+    nofExpressions = np.zeros(len(all_symbols))
 
     eqClasses, expressionsByEqClass = take_expressions_eq_classes(data_filename)
     #iterate over eqClasses
@@ -484,12 +505,13 @@ def plot_average_distance_per_symbol(encoder, data_filename, dataset, path_to_ou
         print("calculating for eqClass", eqClasses[i])
         encodedExpressionsByEqClass = get_encodings(encoder, expressionsByEqClass[i])
 
-        error = calculate_average_distance_to_center_for_eqClass(eqClasses[i], centers[i], encodedExpressionsByEqClass, all_symbols_regex, exclusive)
+        error = calculate_average_distance_to_center_for_eqClass_by_symbol(eqClasses[i], centers[i], encodedExpressionsByEqClass, all_symbols_regex, exclusive)
 
         #check if class contributed to symbol
         for j in range(len(error)):
             if (np.sum(error[j]) > 0):
                 nofClasses[j] += 1
+                nofExpressions[j] += len(expressionsByEqClass[i])
         all_error = np.add(all_error, error)
 
     #average over number of equivilace classes
@@ -502,16 +524,56 @@ def plot_average_distance_per_symbol(encoder, data_filename, dataset, path_to_ou
     for i in range(len(all_symbols_regex)):
         if(np.sum(all_error[i]) > 0):
             print("plotting for", all_symbols[i])
-            filename = path_to_output_file + dataset + '-' + all_symbols[i] + '.svg'
+            filename = path_to_output_file + dataset + '-' + str(int(nofExpressions[i])) + '-' + str(int(nofClasses[i])) + '_' + all_symbols[i] + '.svg'
             symbol = all_symbols[i]
             error = all_error[i]
             plot_per_symbol(filename, symbol, error)
+
+
+def plot_average_distance_all(encoder, data_filename, dataset, path_to_output_file):
+    """
+    Plots a bar plot of the average distance of the elements of the equivilance classes
+    to the center of the equivilance class (average over all eqClasses)
+
+    encoder -- the encoder object for encoding
+    data_filename -- the path to the file with the data
+    dataset --  name of the used dataser
+    path_to_output_file -- path for the output file
+    """
+
+    #usually representation_vector_size is 64
+    all_error = np.zeros(encoder.get_representation_vector_size())
+
+    #calculate the center of every equivilance class
+    print("calculating average")
+    centers = calculate_center_for_every_eqClass(encoder, data_filename)
+
+    eqClasses, expressionsByEqClass = take_expressions_eq_classes(data_filename)
+    #iterate over eqClasses
+    for i in range(len(eqClasses)):
+        print("calculating for eqClass", eqClasses[i])
+        encodedExpressionsByEqClass = get_encodings(encoder, expressionsByEqClass[i])
+        error = calculate_average_distance_to_center_for_eqClass(centers[i], encodedExpressionsByEqClass)
+        all_error = np.add(all_error, error)
+
+    all_error = all_error / len(eqClasses)
+
+    #plotting
+    print("plotting for all")
+    filename = path_to_output_file + dataset + '-all.svg'
+    plot_per_symbol(filename, "all_expr", all_error)
+
+
+
+
 
 
 
 # vorläufige main-funktion
 if __name__ == "__main__":
 
+    #poly5
+    #oneVarPoly13
     dataset = 'oneVarPoly13'
     path_to_trained_set = 'results/'
     path_to_data_file = 'semvec-data/expressions-synthetic/'
@@ -550,3 +612,4 @@ if __name__ == "__main__":
     #plot_by_symbol(encoder, data_filename, dataset, path_to_output_file_symbols, all_symbols, symbol_exclusively)
 
     plot_average_distance_per_symbol(encoder, data_filename, dataset, path_to_output_file_symbols, all_symbols, symbol_exclusively)
+    plot_average_distance_all(encoder, data_filename, dataset, path_to_output_file_symbols)
